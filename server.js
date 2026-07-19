@@ -212,7 +212,13 @@ app.patch('/api/municipalities/:sovtown_id', asyncHandler(async (req, res) => {
 
   const patch = {};
   for (const field of EDITABLE_MUNI_FIELDS) {
-    if (field in req.body) patch[field] = req.body[field];
+    if (field in req.body) {
+      let value = req.body[field];
+      if (field === 'assigned_researcher' && typeof value === 'string') {
+        value = value.trim() || null;
+      }
+      patch[field] = value;
+    }
   }
   if (!Object.keys(patch).length) {
     return res.status(400).json({ error: 'No valid fields to update' });

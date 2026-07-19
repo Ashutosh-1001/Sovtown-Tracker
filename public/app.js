@@ -120,12 +120,11 @@
 
   function populateResearcherSelects() {
     const filterSel = document.getElementById('filterResearcher');
-    const modalSel = document.getElementById('fAssignedResearcher');
+    const suggestions = document.getElementById('researcherSuggestions');
     const filterVal = filterSel.value;
-    const modalVal = modalSel.value;
 
     filterSel.innerHTML = '<option value="">Researcher: All</option>';
-    modalSel.innerHTML = '<option value="">Unassigned</option>';
+    suggestions.innerHTML = '';
 
     volunteers.filter((v) => v.active).forEach((v) => {
       const fOpt = document.createElement('option');
@@ -133,14 +132,12 @@
       fOpt.textContent = 'Researcher: ' + v.name;
       filterSel.appendChild(fOpt);
 
-      const mOpt = document.createElement('option');
-      mOpt.value = v.name;
-      mOpt.textContent = v.name;
-      modalSel.appendChild(mOpt);
+      const sOpt = document.createElement('option');
+      sOpt.value = v.name;
+      suggestions.appendChild(sOpt);
     });
 
     if (filterVal) filterSel.value = filterVal;
-    if (modalVal) modalSel.value = modalVal;
   }
 
   async function loadTable() {
@@ -208,11 +205,6 @@
     document.getElementById('fFollowupDate').value = row?.follow_up_date || '';
     document.getElementById('fNote').value = row?.note || '';
 
-    populateResearcherSelects();
-    if (row?.assigned_researcher) {
-      document.getElementById('fAssignedResearcher').value = row.assigned_researcher;
-    }
-
     document.getElementById('overlay').classList.add('open');
   }
 
@@ -246,7 +238,7 @@
       date_sent: document.getElementById('fDateSent').value.trim() || null,
       response_received: document.getElementById('fResponseReceived').value,
       response_date: document.getElementById('fResponseDate').value.trim() || null,
-      assigned_researcher: document.getElementById('fAssignedResearcher').value || null,
+      assigned_researcher: document.getElementById('fAssignedResearcher').value.trim() || null,
       priority: document.getElementById('fPriority').value,
       contact_method: document.getElementById('fContactMethod').value,
       follow_up_date: document.getElementById('fFollowupDate').value.trim() || null,
