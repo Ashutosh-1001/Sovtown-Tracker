@@ -111,107 +111,6 @@
     return params.toString();
   }
 
-  function buildAssignFilter() {
-    const filter = {};
-    const search = document.getElementById('search').value.trim();
-    if (search) filter.search = search;
-    const survey = document.getElementById('filterSurvey').value;
-    if (survey) filter.survey_sent = survey;
-    const responded = document.getElementById('filterResponded').value;
-    if (responded) filter.responded = responded;
-    return filter;
-  }
-
-  function parseResearcherNames(text) {
-    return text
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean);
-  }
-
-  function openAssignModal() {
-    document.getElementById('assignOverlay').classList.add('open');
-  }
-
-  function closeAssignModal() {
-    document.getElementById('assignOverlay').classList.remove('open');
-  }
-
-  function formatAssignSummary(result) {
-    const lines = Object.entries(result.by_researcher || {})
-      .map(([name, count]) => `${name}: ${count}`)
-      .join('; ');
-    return [
-      `Assigned ${result.assigned} towns to ${result.researchers} researcher(s).`,
-      lines,
-      `${result.remaining_unassigned_total.toLocaleString()} unassigned remaining overall.`,
-    ].filter(Boolean).join(' ');
-  }
-
-  async function runBulkAssign() {
-    const researchers = parseResearcherNames(document.getElementById('aaResearchers').value);
-    const townsPerResearcher = parseInt(document.getElementById('aaTownsPerResearcher').value, 10) || 60;
-    const scope = document.getElementById('aaScopeFiltered').checked ? 'filtered' : 'all';
-
-    if (!researchers.length) {
-      showError('Enter at least one researcher name.');
-      return;
-    }
-
-    const previewBody = {
-      researchers,
-      townsPerResearcher,
-      scope,
-      dryRun: true,
-    };
-    if (scope === 'filtered') previewBody.filter = buildAssignFilter();
-
-    try {
-      const previewRes = await fetch('/api/bulk-assign-researchers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(previewBody),
-      });
-      if (!previewRes.ok) {
-        const err = await previewRes.json().catch(() => ({}));
-        throw new Error(err.error || await previewRes.text());
-      }
-      const preview = await previewRes.json();
-      const researcherList = researchers.join(', ');
-      const scopeLabel = scope === 'filtered' ? 'matching current filters' : 'all unassigned';
-      const confirmMsg = [
-        `Assign up to ${townsPerResearcher} towns each to:`,
-        researcherList,
-        '',
-        `Scope: ${scopeLabel}`,
-        `Pool available: ${preview.pool_available}`,
-        `Will assign: ${preview.assigned}`,
-        '',
-        'Continue?',
-      ].join('\n');
-
-      if (!confirm(confirmMsg)) return;
-
-      const runBody = { ...previewBody, dryRun: false };
-      const runRes = await fetch('/api/bulk-assign-researchers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(runBody),
-      });
-      if (!runRes.ok) {
-        const err = await runRes.json().catch(() => ({}));
-        throw new Error(err.error || await runRes.text());
-      }
-      const result = await runRes.json();
-      closeAssignModal();
-      await loadVolunteers();
-      await refresh();
-      showSuccess(formatAssignSummary(result));
-    } catch (e) {
-      showError('Auto assign failed: ' + e.message);
-    }
-  }
-
   async function loadVolunteers() {
     const res = await fetch('/api/volunteers');
     if (!res.ok) throw new Error(await res.text());
@@ -402,9 +301,6 @@
   }
 
   document.getElementById('btnAdd').addEventListener('click', () => openModal(null));
-  document.getElementById('btnBulkAssign').addEventListener('click', openAssignModal);
-  document.getElementById('btnAssignCancel').addEventListener('click', closeAssignModal);
-  document.getElementById('btnAssignRun').addEventListener('click', runBulkAssign);
   document.getElementById('btnCancel').addEventListener('click', closeModal);
   document.getElementById('btnSave').addEventListener('click', saveContact);
   document.getElementById('search').addEventListener('input', onFilterChange);
@@ -420,9 +316,6 @@
   });
   document.getElementById('overlay').addEventListener('click', (e) => {
     if (e.target === document.getElementById('overlay')) closeModal();
-  });
-  document.getElementById('assignOverlay').addEventListener('click', (e) => {
-    if (e.target === document.getElementById('assignOverlay')) closeAssignModal();
   });
   document.getElementById('tableBody').addEventListener('click', async (e) => {
     const editId = e.target.dataset.edit;
