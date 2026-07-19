@@ -1,0 +1,6 @@
+# Place source data files here:
+# - registry.csv   (municipality registry, 19,483 rows)
+# - volunteers.xlsx (volunteer roster with SOVTOWN ID assignments)
+#
+# Run: npm run import
+# This generates sovereign_town.db (gitignored)

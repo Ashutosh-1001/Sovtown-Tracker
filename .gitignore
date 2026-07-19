@@ -1,0 +1,5 @@
+node_modules/
+data/sovereign_town.db
+data/sovereign_town.db-wal
+data/sovereign_town.db-shm
+.env

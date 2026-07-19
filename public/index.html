@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project Sovereign Town</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>🏛 Project Sovereign Town</h1>
+      <span>Outreach Tracker · VOX Felix Laboratory Corporation</span>
+    </div>
+  </div>
+
+  <div id="errorBanner" class="error-banner"></div>
+
+  <div class="controls">
+    <input id="search" type="search" placeholder="Search name, city, email, affiliation, note" />
+    <select id="filterSurvey">
+      <option value="">Survey Sent: All</option>
+      <option value="Yes">Survey Sent: Yes</option>
+      <option value="No">Survey Sent: No</option>
+    </select>
+    <select id="filterResponded">
+      <option value="">Responded: All</option>
+      <option value="yes">Responded: Yes</option>
+      <option value="no">Responded: No</option>
+    </select>
+    <select id="filterResearcher">
+      <option value="">Researcher: All</option>
+    </select>
+    <button class="btn-add" id="btnAdd">＋ Add Contact</button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>SOVTOWN ID</th>
+          <th>Municipality</th>
+          <th>Legal Designation</th>
+          <th>Official Census Name</th>
+          <th>State</th>
+          <th>State Abbr.</th>
+          <th>State FIPS</th>
+          <th>Place FIPS</th>
+          <th>Census GEOID</th>
+          <th>2025 Population</th>
+          <th>Under 10,000?</th>
+          <th>Population Band</th>
+          <th>Enrichment Status</th>
+          <th>Assigned Researcher</th>
+          <th>Official Website</th>
+          <th>Primary Contact</th>
+          <th>Contact Email</th>
+          <th>Contact Phone</th>
+          <th>Research Notes</th>
+          <th>Census Functional Status</th>
+          <th>Source URL</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="pagination">
+    <button type="button" id="btnPrev" disabled>Previous</button>
+    <span id="pageInfo">Page 1</span>
+    <button type="button" id="btnNext">Next</button>
+  </div>
+
+  <div class="footer">VOX Felix Laboratory Corporation · Project Sovereign Town · 501(c)(3)</div>
+
+  <div id="overlay" class="overlay">
+    <div class="modal">
+      <h2 id="modalTitle">Add Contact</h2>
+      <div class="form-row wide">
+        <div class="form-group">
+          <label for="fFirstName">First Name</label>
+          <input id="fFirstName" type="text" />
+        </div>
+        <div class="form-group">
+          <label for="fSurname">Surname</label>
+          <input id="fSurname" type="text" />
+        </div>
+      </div>
+      <div class="form-row wide">
+        <div class="form-group">
+          <label for="fCity">City</label>
+          <input id="fCity" type="text" />
+        </div>
+        <div class="form-group">
+          <label for="fState">State</label>
+          <input id="fState" type="text" />
+        </div>
+      </div>
+      <div class="form-row wide">
+        <div class="form-group">
+          <label for="fRole">Role</label>
+          <input id="fRole" type="text" />
+        </div>
+        <div class="form-group">
+          <label for="fAffiliation">Affiliation</label>
+          <input id="fAffiliation" type="text" />
+        </div>
+      </div>
+      <div class="form-row wide">
+        <div class="form-group">
+          <label for="fEmail">Email</label>
+          <input id="fEmail" type="email" />
+        </div>
+        <div class="form-group">
+          <label for="fPhone">Phone</label>
+          <input id="fPhone" type="text" />
+        </div>
+      </div>
+      <div class="form-row wide">
+        <div class="form-group">
+          <label for="fSurveySent">Survey Sent</label>
+          <select id="fSurveySent">
+            <option value="No">No</option>
+            <option value="Yes">Yes</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="fResponded">Responded (date or blank)</label>
+          <input id="fResponded" type="text" />
+        </div>
+      </div>
+      <div class="form-row wide">
+        <div class="form-group">
+          <label for="fDateSent">Date Sent</label>
+          <input id="fDateSent" type="text" />
+        </div>
+        <div class="form-group">
+          <label for="fResponseReceived">Response Received</label>
+          <select id="fResponseReceived">
+            <option value="No">No</option>
+            <option value="Yes">Yes</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row wide">
+        <div class="form-group">
+          <label for="fResponseDate">Response Date</label>
+          <input id="fResponseDate" type="text" />
+        </div>
+        <div class="form-group">
+          <label for="fAssignedResearcher">Assigned Researcher</label>
+          <select id="fAssignedResearcher">
+            <option value="">Unassigned</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row wide">
+        <div class="form-group">
+          <label for="fPriority">Priority</label>
+          <select id="fPriority">
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+            <option value="Low">Low</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="fContactMethod">Contact Method</label>
+          <select id="fContactMethod">
+            <option value="Email">Email</option>
+            <option value="LinkedIn">LinkedIn</option>
+            <option value="Web Portal">Web Portal</option>
+            <option value="Phone">Phone</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row wide">
+        <div class="form-group">
+          <label for="fFollowupDate">Follow-up Date</label>
+          <input id="fFollowupDate" type="text" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="width: 100%;">
+          <label for="fNote">Note</label>
+          <textarea id="fNote" rows="4"></textarea>
+        </div>
+      </div>
+      <div class="modal-btns">
+        <button class="btn-cancel" id="btnCancel">Cancel</button>
+        <button class="btn-save" id="btnSave">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
