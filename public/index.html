@@ -34,6 +34,10 @@
     <button class="btn-add" id="btnAdd">＋ Add Contact</button>
   </div>
 
+  <div class="bulk-actions">
+    <button class="btn-bulk-assign" id="btnBulkAssign" type="button">Auto Assign Researcher</button>
+  </div>
+
   <div class="table-wrap">
     <table>
       <thead>
@@ -190,6 +194,36 @@
       <div class="modal-btns">
         <button class="btn-cancel" id="btnCancel">Cancel</button>
         <button class="btn-save" id="btnSave">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="assignOverlay" class="overlay">
+    <div class="modal">
+      <h2>Auto Assign Researcher</h2>
+      <p class="modal-help">Assign unassigned municipalities to a list of researchers. Each researcher receives up to the number of towns you specify, in SOVTOWN ID order.</p>
+      <div class="form-row">
+        <div class="form-group" style="width: 100%;">
+          <label for="aaResearchers">Researcher names (one per line)</label>
+          <textarea id="aaResearchers" rows="6" placeholder="Alice Smith&#10;Bob Jones&#10;Carol Lee"></textarea>
+        </div>
+      </div>
+      <div class="form-row wide">
+        <div class="form-group">
+          <label for="aaTownsPerResearcher">Towns per researcher</label>
+          <input id="aaTownsPerResearcher" type="number" min="1" value="60" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="width: 100%;">
+          <span class="field-label">Which unassigned rows to use</span>
+          <label class="radio-row"><input type="radio" name="aaScope" id="aaScopeAll" value="all" checked /> All unassigned municipalities</label>
+          <label class="radio-row"><input type="radio" name="aaScope" id="aaScopeFiltered" value="filtered" /> Unassigned rows matching current search/filters (ignores researcher filter)</label>
+        </div>
+      </div>
+      <div class="modal-btns">
+        <button class="btn-cancel" id="btnAssignCancel" type="button">Cancel</button>
+        <button class="btn-save" id="btnAssignRun" type="button">Run Assignment</button>
       </div>
     </div>
   </div>

@@ -1,3 +1,4 @@
+require('dotenv').config();
 const path = require('path');
 const express = require('express');
 const {
@@ -95,6 +96,22 @@ function buildMongoFilter(query) {
   if (query.enrichment_status) filter.enrichment_status = query.enrichment_status;
 
   return filter;
+}
+
+function unassignedClause() {
+  return {
+    $or: [
+      { assignedResearcher: null },
+      { assignedResearcher: '' },
+      { assignedResearcher: { $exists: false } },
+    ],
+  };
+}
+
+function withUnassignedOnly(filter = {}) {
+  const hasKeys = Object.keys(filter).length > 0;
+  if (!hasKeys) return unassignedClause();
+  return { $and: [filter, unassignedClause()] };
 }
 
 function escapeCsv(val) {
@@ -407,6 +424,63 @@ app.post('/api/auto-assign', asyncHandler(async (req, res) => {
     batchSize,
     volunteers: activeVolunteers.length,
     municipalities_considered: unassigned.length,
+  });
+}));
+
+app.post('/api/bulk-assign-researchers', asyncHandler(async (req, res) => {
+  const municipalities = getDb().collection('municipalities');
+  const researchers = (req.body?.researchers || [])
+    .map((name) => String(name).trim())
+    .filter(Boolean);
+  const townsPerResearcher = Math.max(1, parseInt(req.body?.townsPerResearcher, 10) || 60);
+  const scope = req.body?.scope === 'filtered' ? 'filtered' : 'all';
+  const dryRun = req.body?.dryRun === true;
+
+  if (!researchers.length) {
+    return res.status(400).json({ error: 'At least one researcher name is required' });
+  }
+
+  const baseFilter = scope === 'filtered' ? buildMongoFilter(req.body?.filter || {}) : {};
+  const filter = withUnassignedOnly(baseFilter);
+  const maxToAssign = researchers.length * townsPerResearcher;
+
+  const pool = await municipalities
+    .find(filter)
+    .sort({ sovtown_id: 1 })
+    .limit(maxToAssign)
+    .project({ _id: 1, sovtown_id: 1 })
+    .toArray();
+
+  const byResearcher = Object.fromEntries(researchers.map((name) => [name, 0]));
+  const assignments = [];
+
+  for (let i = 0; i < pool.length; i++) {
+    const researcherIndex = Math.floor(i / townsPerResearcher);
+    if (researcherIndex >= researchers.length) break;
+    const name = researchers[researcherIndex];
+    assignments.push({ _id: pool[i]._id, name });
+    byResearcher[name]++;
+  }
+
+  if (!dryRun) {
+    for (const { _id, name } of assignments) {
+      await municipalities.updateOne({ _id }, { $set: { assignedResearcher: name } });
+    }
+  }
+
+  const remainingUnassigned = await municipalities.countDocuments(filter);
+  const unassignedTotal = await municipalities.countDocuments(unassignedClause());
+
+  res.json({
+    dry_run: dryRun,
+    scope,
+    researchers: researchers.length,
+    towns_per_researcher: townsPerResearcher,
+    assigned: assignments.length,
+    by_researcher: byResearcher,
+    pool_available: pool.length,
+    remaining_unassigned_in_scope: remainingUnassigned,
+    remaining_unassigned_total: unassignedTotal,
   });
 }));
 

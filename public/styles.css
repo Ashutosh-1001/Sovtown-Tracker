@@ -8,6 +8,9 @@ body { font-family: system-ui, -apple-system, sans-serif; background: #f0f4f8; c
 .controls input { flex: 1; min-width: 200px; }
 .btn-add { margin-left: auto; background: #2e7d32; color: white; border: none; padding: 9px 18px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 600; }
 .btn-add:hover { background: #1b5e20; }
+.bulk-actions { display: flex; gap: 10px; padding: 0 24px 16px; background: white; border-bottom: 1px solid #e0e0e0; }
+.btn-bulk-assign { background: #6a1b9a; color: white; border: none; padding: 9px 18px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 700; }
+.btn-bulk-assign:hover { background: #4a148c; }
 .table-wrap { padding: 20px 24px; overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.08); font-size: 0.85rem; }
 th { background: #1a3c5e; color: white; padding: 10px 12px; text-align: left; font-weight: 600; white-space: nowrap; }
@@ -40,6 +43,10 @@ tr:hover td { background: #eef3f8; }
 .actions-cell { white-space: nowrap; }
 .form-row.wide { flex-wrap: wrap; }
 .form-row.wide .form-group { min-width: 220px; }
+.modal-help { font-size: 0.88rem; color: #555; margin-bottom: 16px; line-height: 1.45; }
+.field-label { display: block; font-size: 0.78rem; font-weight: 600; color: #555; margin-bottom: 8px; }
+.radio-row { display: flex; align-items: flex-start; gap: 8px; font-size: 0.88rem; color: #333; margin-bottom: 8px; cursor: pointer; }
+.radio-row input { margin-top: 3px; }
 .pagination { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 0 24px 20px; font-size: 0.85rem; color: #666; }
 .pagination button { padding: 6px 14px; border: 1px solid #ccc; border-radius: 6px; background: white; cursor: pointer; font-size: 0.85rem; }
 .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }

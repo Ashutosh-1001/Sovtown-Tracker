@@ -7,10 +7,13 @@ const envPath = path.join(__dirname, '.env');
 if (fs.existsSync(envPath)) {
   for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
     const m = line.match(/^([^#=]+)=(.*)$/);
-    if (m && !process.env[m[1].trim()]) {
+    if (m) {
+      const key = m[1].trim();
       const val = m[2].trim();
       if (val.includes('USER:PASSWORD')) continue;
-      process.env[m[1].trim()] = val;
+      if (!process.env[key] || String(process.env[key]).includes('USER:PASSWORD')) {
+        process.env[key] = val;
+      }
     }
   }
 }
@@ -38,6 +41,14 @@ async function connect() {
 function getDb() {
   if (!db) throw new Error('Database not connected. Call connect() first.');
   return db;
+}
+
+async function close() {
+  if (client) {
+    await client.close();
+    client = null;
+    db = null;
+  }
 }
 
 function normalizeMunicipality(doc) {
@@ -73,6 +84,7 @@ function bodyToMongoUpdate(body) {
 module.exports = {
   connect,
   getDb,
+  close,
   ObjectId,
   normalizeMunicipality,
   normalizeVolunteer,
