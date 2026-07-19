@@ -214,10 +214,12 @@
   }
 
   async function fetchRow(id) {
-    const res = await fetch('/api/municipalities?search=' + encodeURIComponent(id) + '&pageSize=1');
-    if (!res.ok) throw new Error(await res.text());
-    const data = await res.json();
-    return data.rows.find((r) => r.sovtown_id === id) || data.rows[0];
+    const res = await fetch('/api/municipalities/' + encodeURIComponent(id));
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || await res.text());
+    }
+    return res.json();
   }
 
   async function saveContact() {
@@ -246,7 +248,9 @@
     };
 
     try {
-      const url = editingId ? `/api/municipalities/${editingId}` : '/api/municipalities';
+      const url = editingId
+        ? `/api/municipalities/${encodeURIComponent(editingId)}`
+        : '/api/municipalities';
       const method = editingId ? 'PATCH' : 'POST';
       const res = await fetch(url, {
         method,
@@ -314,8 +318,8 @@
     const deleteId = e.target.dataset.delete;
     if (editId) {
       try {
-        const row = await fetchRow(editId);
-        if (row) openModal(row);
+        const row = lastRows.find((r) => r.sovtown_id === editId) || await fetchRow(editId);
+        openModal(row);
       } catch (err) {
         showError(err.message);
       }

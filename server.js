@@ -170,6 +170,14 @@ app.get('/api/municipalities', asyncHandler(async (req, res) => {
   });
 }));
 
+app.get('/api/municipalities/:sovtown_id', asyncHandler(async (req, res) => {
+  const doc = await getDb().collection('municipalities').findOne({
+    sovtown_id: req.params.sovtown_id,
+  });
+  if (!doc) return res.status(404).json({ error: 'Municipality not found' });
+  res.json(normalizeMunicipality(doc));
+}));
+
 app.post('/api/municipalities', asyncHandler(async (req, res) => {
   const db = getDb();
   const municipalities = db.collection('municipalities');
