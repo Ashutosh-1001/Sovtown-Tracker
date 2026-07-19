@@ -60,6 +60,12 @@
           <th>Research Notes</th>
           <th>Census Functional Status</th>
           <th>Source URL</th>
+          <th>Priority</th>
+          <th>Contact Method</th>
+          <th>Follow-up Date</th>
+          <th>Survey Sent</th>
+          <th>Date Sent</th>
+          <th>Response Received</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -76,83 +82,67 @@
   <div class="footer">VOX Felix Laboratory Corporation · Project Sovereign Town · 501(c)(3)</div>
 
   <div id="overlay" class="overlay">
-    <div class="modal">
+    <div class="modal modal-wide">
       <h2 id="modalTitle">Add Contact</h2>
       <div class="form-row wide">
         <div class="form-group">
-          <label for="fFirstName">First Name</label>
-          <input id="fFirstName" type="text" />
+          <label for="fSovtownId">SOVTOWN ID *</label>
+          <input id="fSovtownId" type="text" placeholder="SOV-000001" required />
         </div>
         <div class="form-group">
-          <label for="fSurname">Surname</label>
-          <input id="fSurname" type="text" />
+          <label for="fMunicipality">Municipality</label>
+          <input id="fMunicipality" type="text" />
         </div>
       </div>
       <div class="form-row wide">
         <div class="form-group">
-          <label for="fCity">City</label>
-          <input id="fCity" type="text" />
+          <label for="fLegalDesignation">Legal Designation</label>
+          <input id="fLegalDesignation" type="text" />
         </div>
+        <div class="form-group">
+          <label for="fOfficialCensusName">Official Census Name</label>
+          <input id="fOfficialCensusName" type="text" />
+        </div>
+      </div>
+      <div class="form-row wide">
         <div class="form-group">
           <label for="fState">State</label>
           <input id="fState" type="text" />
         </div>
-      </div>
-      <div class="form-row wide">
         <div class="form-group">
-          <label for="fRole">Role</label>
-          <input id="fRole" type="text" />
-        </div>
-        <div class="form-group">
-          <label for="fAffiliation">Affiliation</label>
-          <input id="fAffiliation" type="text" />
+          <label for="fStateAbbr">State Abbr.</label>
+          <input id="fStateAbbr" type="text" maxlength="2" />
         </div>
       </div>
       <div class="form-row wide">
         <div class="form-group">
-          <label for="fEmail">Email</label>
-          <input id="fEmail" type="email" />
-        </div>
-        <div class="form-group">
-          <label for="fPhone">Phone</label>
-          <input id="fPhone" type="text" />
-        </div>
-      </div>
-      <div class="form-row wide">
-        <div class="form-group">
-          <label for="fSurveySent">Survey Sent</label>
-          <select id="fSurveySent">
-            <option value="No">No</option>
-            <option value="Yes">Yes</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="fResponded">Responded (date or blank)</label>
-          <input id="fResponded" type="text" />
-        </div>
-      </div>
-      <div class="form-row wide">
-        <div class="form-group">
-          <label for="fDateSent">Date Sent</label>
-          <input id="fDateSent" type="text" />
-        </div>
-        <div class="form-group">
-          <label for="fResponseReceived">Response Received</label>
-          <select id="fResponseReceived">
-            <option value="No">No</option>
-            <option value="Yes">Yes</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-row wide">
-        <div class="form-group">
-          <label for="fResponseDate">Response Date</label>
-          <input id="fResponseDate" type="text" />
+          <label for="fPopulation2025">2025 Population</label>
+          <input id="fPopulation2025" type="number" min="0" />
         </div>
         <div class="form-group">
           <label for="fAssignedResearcher">Assigned Researcher</label>
           <input id="fAssignedResearcher" type="text" list="researcherSuggestions" placeholder="Unassigned" />
           <datalist id="researcherSuggestions"></datalist>
+        </div>
+      </div>
+      <div class="form-row wide">
+        <div class="form-group">
+          <label for="fPrimaryContact">Primary Contact</label>
+          <input id="fPrimaryContact" type="text" />
+        </div>
+        <div class="form-group">
+          <label for="fContactEmail">Contact Email</label>
+          <input id="fContactEmail" type="email" />
+        </div>
+      </div>
+      <div class="form-row wide">
+        <div class="form-group">
+          <label for="fContactPhone">Contact Phone</label>
+          <input id="fContactPhone" type="text" />
+        </div>
+        <div class="form-group">
+          <label for="fOfficialWebsite">Official Website</label>
+          <input id="fOfficialWebsite" type="url" />
         </div>
       </div>
       <div class="form-row wide">
@@ -179,11 +169,31 @@
           <label for="fFollowupDate">Follow-up Date</label>
           <input id="fFollowupDate" type="text" />
         </div>
+        <div class="form-group">
+          <label for="fSurveySent">Survey Sent</label>
+          <select id="fSurveySent">
+            <option value="No">No</option>
+            <option value="Yes">Yes</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row wide">
+        <div class="form-group">
+          <label for="fDateSent">Date Sent</label>
+          <input id="fDateSent" type="text" />
+        </div>
+        <div class="form-group">
+          <label for="fResponseReceived">Response Received</label>
+          <select id="fResponseReceived">
+            <option value="No">No</option>
+            <option value="Yes">Yes</option>
+          </select>
+        </div>
       </div>
       <div class="form-row">
         <div class="form-group" style="width: 100%;">
-          <label for="fNote">Note</label>
-          <textarea id="fNote" rows="4"></textarea>
+          <label for="fResearchNotes">Research Notes</label>
+          <textarea id="fResearchNotes" rows="3"></textarea>
         </div>
       </div>
       <div class="modal-btns">

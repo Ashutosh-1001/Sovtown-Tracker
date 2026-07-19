@@ -8,19 +8,8 @@
   let volunteers = [];
   let searchTimer = null;
   let lastRows = [];
+  let activeInlineCell = null;
 
-  function splitName(full) {
-    const parts = (full || '').trim().split(/\s+/);
-    if (parts.length === 0) return { first: '', last: '' };
-    if (parts.length === 1) return { first: parts[0], last: '' };
-    return { first: parts[0], last: parts.slice(1).join(' ') };
-  }
-
-  function combineName(first, last) {
-    return [first, last].filter(Boolean).join(' ').trim() || null;
-  }
-
-  /** Registry columns in registry.xlsx order → MongoDB/API snake_case keys */
   const REGISTRY_COLUMNS = [
     { header: 'SOVTOWN ID', key: 'sovtown_id' },
     { header: 'Municipality', key: 'municipality' },
@@ -45,7 +34,37 @@
     { header: 'Source URL', key: 'source_url' },
   ];
 
-  const TABLE_COLSPAN = 1 + REGISTRY_COLUMNS.length + 1; // # + registry + Actions
+  const TRACKER_COLUMNS = [
+    { header: 'Priority', key: 'priority' },
+    { header: 'Contact Method', key: 'contact_method' },
+    { header: 'Follow-up Date', key: 'follow_up_date' },
+    { header: 'Survey Sent', key: 'survey_sent' },
+    { header: 'Date Sent', key: 'date_sent' },
+    { header: 'Response Received', key: 'response_received' },
+  ];
+
+  const TABLE_COLUMNS = [...REGISTRY_COLUMNS, ...TRACKER_COLUMNS];
+
+  const INLINE_EDITABLE = new Set([
+    'assigned_researcher',
+    'priority',
+    'contact_method',
+    'follow_up_date',
+    'survey_sent',
+    'date_sent',
+    'response_received',
+    'contact_email',
+    'contact_phone',
+  ]);
+
+  const TABLE_COLSPAN = 1 + TABLE_COLUMNS.length + 1;
+
+  const SELECT_OPTIONS = {
+    priority: ['High', 'Medium', 'Low'],
+    contact_method: ['Email', 'LinkedIn', 'Web Portal', 'Phone'],
+    survey_sent: ['No', 'Yes'],
+    response_received: ['No', 'Yes'],
+  };
 
   function displayCell(row, key) {
     const v = row[key];
@@ -54,11 +73,6 @@
       return escapeHtml(v.toLocaleString());
     }
     return escapeHtml(String(v));
-  }
-
-  function hasResponded(r) {
-    return r.responded === 'Yes' || (r.response_date && r.response_date.trim()) ||
-      (r.responded && r.responded !== 'No' && String(r.responded).trim());
   }
 
   function showError(msg) {
@@ -83,7 +97,7 @@
       b.style.background = '#ffebee';
       b.style.color = '#c62828';
       b.style.borderBottomColor = '#c62828';
-    }, 5000);
+    }, 4000);
   }
 
   function escapeHtml(s) {
@@ -111,33 +125,46 @@
     return params.toString();
   }
 
-  async function loadVolunteers() {
-    const res = await fetch('/api/volunteers');
+  async function loadResearcherNames() {
+    const res = await fetch('/api/researcher-names');
     if (!res.ok) throw new Error(await res.text());
-    volunteers = await res.json();
-    populateResearcherSelects();
+    return res.json();
   }
 
-  function populateResearcherSelects() {
+  async function loadVolunteers() {
+    const [volRes, names] = await Promise.all([
+      fetch('/api/volunteers'),
+      loadResearcherNames(),
+    ]);
+    if (!volRes.ok) throw new Error(await volRes.text());
+    volunteers = await volRes.json();
+    populateResearcherSelects(names);
+  }
+
+  function populateResearcherSelects(researcherNames) {
     const filterSel = document.getElementById('filterResearcher');
     const suggestions = document.getElementById('researcherSuggestions');
     const filterVal = filterSel.value;
 
     filterSel.innerHTML = '<option value="">Researcher: All</option>';
-    suggestions.innerHTML = '';
 
-    volunteers.filter((v) => v.active).forEach((v) => {
+    researcherNames.forEach((name) => {
       const fOpt = document.createElement('option');
-      fOpt.value = v.name;
-      fOpt.textContent = 'Researcher: ' + v.name;
+      fOpt.value = name;
+      fOpt.textContent = 'Researcher: ' + name;
       filterSel.appendChild(fOpt);
-
-      const sOpt = document.createElement('option');
-      sOpt.value = v.name;
-      suggestions.appendChild(sOpt);
     });
 
     if (filterVal) filterSel.value = filterVal;
+
+    suggestions.innerHTML = '';
+    const suggestionSet = new Set(researcherNames);
+    volunteers.filter((v) => v.active).forEach((v) => suggestionSet.add(v.name));
+    [...suggestionSet].sort((a, b) => a.localeCompare(b)).forEach((name) => {
+      const sOpt = document.createElement('option');
+      sOpt.value = name;
+      suggestions.appendChild(sOpt);
+    });
   }
 
   async function loadTable() {
@@ -146,6 +173,15 @@
     const data = await res.json();
     totalRows = data.total;
     renderTable(data.rows, data.page, data.pageSize, data.total);
+  }
+
+  function renderTableCell(row, col) {
+    const { key } = col;
+    const display = displayCell(row, key);
+    if (!INLINE_EDITABLE.has(key)) {
+      return `<td>${display}</td>`;
+    }
+    return `<td class="editable-cell" data-sovtown-id="${escapeHtml(row.sovtown_id)}" data-field="${key}" title="Click to edit">${display}</td>`;
   }
 
   function renderTable(rows, page, pageSize, total) {
@@ -157,7 +193,7 @@
       tbody.innerHTML = `<tr><td class="table-empty" colspan="${TABLE_COLSPAN}">No contacts match your filters.</td></tr>`;
     } else {
       tbody.innerHTML = rows.map((r, i) => {
-        const cells = REGISTRY_COLUMNS.map((col) => `<td>${displayCell(r, col.key)}</td>`).join('');
+        const cells = TABLE_COLUMNS.map((col) => renderTableCell(r, col)).join('');
         const safeId = escapeHtml(r.sovtown_id || '');
 
         return `
@@ -180,30 +216,37 @@
     document.getElementById('btnNext').disabled = page >= totalPages;
   }
 
+  function setFormValue(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.value = value == null || value === '' ? '' : value;
+  }
+
   function openModal(row) {
     editingId = row ? row.sovtown_id : null;
     document.getElementById('modalTitle').textContent = row ? 'Edit Contact' : 'Add Contact';
 
-    const names = splitName(row?.primary_contact || '');
-    document.getElementById('fFirstName').value = names.first;
-    document.getElementById('fSurname').value = names.last;
-    document.getElementById('fCity').value = row?.municipality || '';
-    document.getElementById('fState').value = row?.state || row?.state_abbr || '';
-    document.getElementById('fRole').value = row?.legal_designation || '';
-    document.getElementById('fAffiliation').value = row?.enrichment_status || '';
-    document.getElementById('fEmail').value = row?.contact_email || '';
-    document.getElementById('fPhone').value = row?.contact_phone || '';
-    document.getElementById('fSurveySent').value = row?.survey_sent || 'No';
-    document.getElementById('fResponded').value =
-      (row?.responded && row.responded !== 'Yes' && row.responded !== 'No') ? row.responded : '';
-    document.getElementById('fDateSent').value = row?.date_sent || '';
-    document.getElementById('fResponseReceived').value = row?.response_received || 'No';
-    document.getElementById('fResponseDate').value = row?.response_date || '';
-    document.getElementById('fAssignedResearcher').value = row?.assigned_researcher || '';
-    document.getElementById('fPriority').value = row?.priority || 'Medium';
-    document.getElementById('fContactMethod').value = row?.contact_method || 'Email';
-    document.getElementById('fFollowupDate').value = row?.follow_up_date || '';
-    document.getElementById('fNote').value = row?.note || '';
+    const sovtownInput = document.getElementById('fSovtownId');
+    sovtownInput.value = row?.sovtown_id || '';
+    sovtownInput.readOnly = !!row;
+
+    setFormValue('fMunicipality', row?.municipality);
+    setFormValue('fLegalDesignation', row?.legal_designation);
+    setFormValue('fOfficialCensusName', row?.official_census_name);
+    setFormValue('fState', row?.state);
+    setFormValue('fStateAbbr', row?.state_abbr);
+    setFormValue('fPopulation2025', row?.population_2025);
+    setFormValue('fAssignedResearcher', row?.assigned_researcher);
+    setFormValue('fPrimaryContact', row?.primary_contact);
+    setFormValue('fContactEmail', row?.contact_email);
+    setFormValue('fContactPhone', row?.contact_phone);
+    setFormValue('fOfficialWebsite', row?.official_website);
+    setFormValue('fPriority', row?.priority || 'Medium');
+    setFormValue('fContactMethod', row?.contact_method || 'Email');
+    setFormValue('fFollowupDate', row?.follow_up_date);
+    setFormValue('fSurveySent', row?.survey_sent || 'No');
+    setFormValue('fDateSent', row?.date_sent);
+    setFormValue('fResponseReceived', row?.response_received || 'No');
+    setFormValue('fResearchNotes', row?.research_notes);
 
     document.getElementById('overlay').classList.add('open');
   }
@@ -211,6 +254,31 @@
   function closeModal() {
     document.getElementById('overlay').classList.remove('open');
     editingId = null;
+    document.getElementById('fSovtownId').readOnly = false;
+  }
+
+  function readFormBody() {
+    return {
+      sovtown_id: document.getElementById('fSovtownId').value.trim(),
+      municipality: document.getElementById('fMunicipality').value.trim() || null,
+      legal_designation: document.getElementById('fLegalDesignation').value.trim() || null,
+      official_census_name: document.getElementById('fOfficialCensusName').value.trim() || null,
+      state: document.getElementById('fState').value.trim() || null,
+      state_abbr: document.getElementById('fStateAbbr').value.trim() || null,
+      population_2025: document.getElementById('fPopulation2025').value.trim() || null,
+      assigned_researcher: document.getElementById('fAssignedResearcher').value.trim() || null,
+      primary_contact: document.getElementById('fPrimaryContact').value.trim() || null,
+      contact_email: document.getElementById('fContactEmail').value.trim() || null,
+      contact_phone: document.getElementById('fContactPhone').value.trim() || null,
+      official_website: document.getElementById('fOfficialWebsite').value.trim() || null,
+      priority: document.getElementById('fPriority').value,
+      contact_method: document.getElementById('fContactMethod').value,
+      follow_up_date: document.getElementById('fFollowupDate').value.trim() || null,
+      survey_sent: document.getElementById('fSurveySent').value,
+      date_sent: document.getElementById('fDateSent').value.trim() || null,
+      response_received: document.getElementById('fResponseReceived').value,
+      research_notes: document.getElementById('fResearchNotes').value.trim() || null,
+    };
   }
 
   async function fetchRow(id) {
@@ -223,39 +291,35 @@
   }
 
   async function saveContact() {
-    const respondedInput = document.getElementById('fResponded').value.trim();
-    const body = {
-      municipality: document.getElementById('fCity').value.trim() || null,
-      state: document.getElementById('fState').value.trim() || null,
-      primary_contact: combineName(
-        document.getElementById('fFirstName').value.trim(),
-        document.getElementById('fSurname').value.trim()
-      ),
-      legal_designation: document.getElementById('fRole').value.trim() || null,
-      enrichment_status: document.getElementById('fAffiliation').value.trim() || null,
-      contact_email: document.getElementById('fEmail').value.trim() || null,
-      contact_phone: document.getElementById('fPhone').value.trim() || null,
-      survey_sent: document.getElementById('fSurveySent').value,
-      responded: respondedInput || (document.getElementById('fResponseReceived').value === 'Yes' ? 'Yes' : 'No'),
-      date_sent: document.getElementById('fDateSent').value.trim() || null,
-      response_received: document.getElementById('fResponseReceived').value,
-      response_date: document.getElementById('fResponseDate').value.trim() || null,
-      assigned_researcher: document.getElementById('fAssignedResearcher').value.trim() || null,
-      priority: document.getElementById('fPriority').value,
-      contact_method: document.getElementById('fContactMethod').value,
-      follow_up_date: document.getElementById('fFollowupDate').value.trim() || null,
-      note: document.getElementById('fNote').value.trim() || null,
-    };
+    const body = readFormBody();
+
+    if (!editingId && !body.sovtown_id) {
+      showError('SOVTOWN ID is required.');
+      return;
+    }
 
     try {
+      if (!editingId) {
+        const check = await fetch('/api/municipalities/' + encodeURIComponent(body.sovtown_id));
+        if (check.ok) {
+          showError('SOVTOWN ID already exists — choose a unique ID.');
+          return;
+        }
+        if (check.status !== 404) {
+          throw new Error(await check.text());
+        }
+      }
+
       const url = editingId
         ? `/api/municipalities/${encodeURIComponent(editingId)}`
         : '/api/municipalities';
       const method = editingId ? 'PATCH' : 'POST';
+      const payload = editingId ? { ...body, sovtown_id: undefined } : body;
+
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -269,10 +333,118 @@
     }
   }
 
+  async function patchField(sovtownId, field, value) {
+    const res = await fetch(`/api/municipalities/${encodeURIComponent(sovtownId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [field]: value === '' ? null : value }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || await res.text());
+    }
+    return res.json();
+  }
+
+  function finishInlineCell(td, row, field) {
+    td.classList.remove('is-editing');
+    td.innerHTML = displayCell(row, field);
+    td.dataset.field = field;
+    td.dataset.sovtownId = row.sovtown_id;
+    activeInlineCell = null;
+  }
+
+  function createInlineEditor(field, currentValue) {
+    const options = SELECT_OPTIONS[field];
+    if (options) {
+      const select = document.createElement('select');
+      select.className = 'inline-select';
+      options.forEach((opt) => {
+        const o = document.createElement('option');
+        o.value = opt;
+        o.textContent = opt;
+        if (opt === (currentValue || (field === 'priority' ? 'Medium' : 'No'))) o.selected = true;
+        select.appendChild(o);
+      });
+      return select;
+    }
+
+    const input = document.createElement('input');
+    input.className = 'inline-input';
+    input.type = field === 'contact_email' ? 'email' : 'text';
+    input.value = currentValue || '';
+    if (field === 'assigned_researcher') {
+      input.setAttribute('list', 'researcherSuggestions');
+      input.placeholder = 'Unassigned';
+    }
+    return input;
+  }
+
+  function startInlineEdit(td) {
+    if (activeInlineCell) return;
+
+    const sovtownId = td.dataset.sovtownId;
+    const field = td.dataset.field;
+    const row = lastRows.find((r) => r.sovtown_id === sovtownId);
+    if (!row) return;
+
+    activeInlineCell = td;
+    td.classList.add('is-editing');
+    const currentValue = row[field] == null ? '' : String(row[field]);
+    const editor = createInlineEditor(field, currentValue);
+    td.textContent = '';
+    td.appendChild(editor);
+    editor.focus();
+    if (editor.select) editor.select();
+
+    let saving = false;
+
+    async function commit() {
+      if (saving) return;
+      saving = true;
+      const newValue = editor.value.trim();
+      const oldValue = currentValue.trim();
+
+      if (newValue === oldValue) {
+        finishInlineCell(td, row, field);
+        return;
+      }
+
+      try {
+        const updated = await patchField(sovtownId, field, newValue);
+        Object.assign(row, updated);
+        finishInlineCell(td, row, field);
+        td.classList.add('cell-saved');
+        setTimeout(() => td.classList.remove('cell-saved'), 1500);
+        showSuccess('Saved');
+        if (field === 'assigned_researcher') {
+          loadResearcherNames()
+            .then((names) => populateResearcherSelects(names))
+            .catch(() => {});
+        }
+      } catch (e) {
+        showError('Save failed: ' + e.message);
+        finishInlineCell(td, row, field);
+      }
+    }
+
+    editor.addEventListener('blur', () => { commit(); });
+    editor.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        editor.blur();
+      }
+      if (ev.key === 'Escape') {
+        saving = true;
+        finishInlineCell(td, row, field);
+      }
+    });
+  }
+
   async function deleteContact(id, name) {
     if (!confirm(`Delete ${name}?`)) return;
     try {
-      const res = await fetch(`/api/municipalities/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/municipalities/${encodeURIComponent(id)}`, { method: 'DELETE' });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || await res.text());
@@ -314,6 +486,12 @@
     if (e.target === document.getElementById('overlay')) closeModal();
   });
   document.getElementById('tableBody').addEventListener('click', async (e) => {
+    const editableCell = e.target.closest('.editable-cell');
+    if (editableCell && !editableCell.classList.contains('is-editing')) {
+      startInlineEdit(editableCell);
+      return;
+    }
+
     const editId = e.target.dataset.edit;
     const deleteId = e.target.dataset.delete;
     if (editId) {

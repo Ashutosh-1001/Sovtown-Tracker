@@ -15,12 +15,61 @@ const app = express();
 app.use(express.json());
 
 const EDITABLE_MUNI_FIELDS = [
-  'municipality', 'state', 'state_abbr', 'legal_designation',
-  'assigned_researcher', 'priority', 'contact_method', 'follow_up_date',
-  'survey_sent', 'date_sent', 'response_received', 'response_date', 'responded',
-  'note', 'primary_contact', 'contact_email', 'contact_phone', 'research_notes',
-  'official_website', 'enrichment_status',
+  'municipality', 'state', 'state_abbr', 'legal_designation', 'official_census_name',
+  'state_fips', 'place_fips', 'census_geoid', 'population_2025', 'under_10000',
+  'population_band', 'enrichment_status', 'assigned_researcher', 'official_website',
+  'primary_contact', 'contact_email', 'contact_phone', 'research_notes',
+  'census_functional_status', 'source_url',
+  'priority', 'contact_method', 'follow_up_date',
+  'survey_sent', 'date_sent', 'response_received', 'response_date', 'responded', 'note',
 ];
+
+function parsePopulationValue(value) {
+  if (value == null || value === '') return null;
+  const n = parseInt(String(value).replace(/,/g, ''), 10);
+  return Number.isNaN(n) ? null : n;
+}
+
+function trimOrNull(value) {
+  if (value == null) return null;
+  const s = String(value).trim();
+  return s || null;
+}
+
+function buildMunicipalityBody(body, sovtown_id) {
+  return bodyToMongoUpdate({
+    sovtown_id,
+    municipality: trimOrNull(body.municipality),
+    legal_designation: trimOrNull(body.legal_designation),
+    official_census_name: trimOrNull(body.official_census_name),
+    state: trimOrNull(body.state),
+    state_abbr: trimOrNull(body.state_abbr),
+    state_fips: trimOrNull(body.state_fips),
+    place_fips: trimOrNull(body.place_fips),
+    census_geoid: trimOrNull(body.census_geoid),
+    population_2025: parsePopulationValue(body.population_2025),
+    under_10000: trimOrNull(body.under_10000),
+    population_band: trimOrNull(body.population_band),
+    enrichment_status: trimOrNull(body.enrichment_status) || 'Not Started',
+    assigned_researcher: trimOrNull(body.assigned_researcher),
+    official_website: trimOrNull(body.official_website),
+    primary_contact: trimOrNull(body.primary_contact),
+    contact_email: trimOrNull(body.contact_email),
+    contact_phone: trimOrNull(body.contact_phone),
+    research_notes: trimOrNull(body.research_notes),
+    census_functional_status: trimOrNull(body.census_functional_status),
+    source_url: trimOrNull(body.source_url),
+    priority: body.priority || 'Medium',
+    contact_method: body.contact_method || 'Email',
+    follow_up_date: trimOrNull(body.follow_up_date),
+    survey_sent: body.survey_sent || 'No',
+    date_sent: trimOrNull(body.date_sent),
+    response_received: body.response_received || 'No',
+    response_date: trimOrNull(body.response_date),
+    responded: body.responded || 'No',
+    note: trimOrNull(body.note),
+  });
+}
 
 const SORTABLE_COLUMNS = {
   sovtown_id: 'sovtown_id',
@@ -182,31 +231,18 @@ app.post('/api/municipalities', asyncHandler(async (req, res) => {
   const db = getDb();
   const municipalities = db.collection('municipalities');
   const body = req.body || {};
-  const sovtown_id = await generateSovtownId(municipalities);
-  const doc = bodyToMongoUpdate({
-    sovtown_id,
-    municipality: body.municipality || null,
-    state: body.state || null,
-    state_abbr: body.state_abbr || null,
-    legal_designation: body.legal_designation || null,
-    primary_contact: body.primary_contact || null,
-    contact_email: body.contact_email || null,
-    contact_phone: body.contact_phone || null,
-    official_website: body.official_website || null,
-    research_notes: body.research_notes || null,
-    note: body.note || null,
-    assigned_researcher: body.assigned_researcher || null,
-    priority: body.priority || 'Medium',
-    contact_method: body.contact_method || null,
-    enrichment_status: body.enrichment_status || 'Not Started',
-    survey_sent: body.survey_sent || 'No',
-    date_sent: body.date_sent || null,
-    response_received: body.response_received || 'No',
-    response_date: body.response_date || null,
-    responded: body.responded || 'No',
-    follow_up_date: body.follow_up_date || null,
-  });
+  const sovtown_id = trimOrNull(body.sovtown_id);
 
+  if (!sovtown_id) {
+    return res.status(400).json({ error: 'SOVTOWN ID is required' });
+  }
+
+  const existing = await municipalities.findOne({ sovtown_id });
+  if (existing) {
+    return res.status(409).json({ error: 'SOVTOWN ID already exists' });
+  }
+
+  const doc = buildMunicipalityBody(body, sovtown_id);
   await municipalities.insertOne(doc);
   res.status(201).json(normalizeMunicipality(doc));
 }));
@@ -222,8 +258,15 @@ app.patch('/api/municipalities/:sovtown_id', asyncHandler(async (req, res) => {
   for (const field of EDITABLE_MUNI_FIELDS) {
     if (field in req.body) {
       let value = req.body[field];
-      if (field === 'assigned_researcher' && typeof value === 'string') {
-        value = value.trim() || null;
+      if (typeof value === 'string') {
+        value = value.trim();
+        if (field === 'assigned_researcher' || field === 'population_2025') {
+          value = field === 'population_2025'
+            ? parsePopulationValue(value)
+            : (value || null);
+        } else if (value === '') {
+          value = null;
+        }
       }
       patch[field] = value;
     }
@@ -316,6 +359,13 @@ app.get('/api/stats', asyncHandler(async (req, res) => {
 }));
 
 // --- Volunteers ---
+
+app.get('/api/researcher-names', asyncHandler(async (req, res) => {
+  const names = await getDb().collection('municipalities').distinct('assignedResearcher', {
+    assignedResearcher: { $nin: [null, ''] },
+  });
+  res.json(names.sort((a, b) => String(a).localeCompare(String(b))));
+}));
 
 app.get('/api/volunteers', asyncHandler(async (req, res) => {
   const rows = await getDb().collection('volunteers').find().sort({ name: 1 }).toArray();

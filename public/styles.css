@@ -49,6 +49,7 @@ tr:hover td { background: #eef3f8; }
 .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
 .overlay.open { display: flex; }
 .modal { background: white; border-radius: 10px; padding: 28px; width: 100%; max-width: 620px; max-height: 90vh; overflow-y: auto; }
+.modal-wide { max-width: 760px; }
 .modal h2 { margin-bottom: 20px; color: #1a3c5e; }
 .form-row { display: flex; gap: 14px; margin-bottom: 14px; }
 .form-group { flex: 1; display: flex; flex-direction: column; }
@@ -63,6 +64,11 @@ tr:hover td { background: #eef3f8; }
 .footer { text-align: center; padding: 20px; font-size: 0.78rem; color: #999; }
 .table-empty { padding: 20px 0; text-align: center; color: #666; }
 .actions-cell { white-space: nowrap; }
+.editable-cell { cursor: pointer; position: relative; }
+.editable-cell:hover { background: #e3f2fd !important; }
+.editable-cell.cell-saved { background: #e8f5e9 !important; box-shadow: inset 0 0 0 2px #2e7d32; }
+.editable-cell.is-editing { padding: 4px 6px; }
+.inline-input, .inline-select { width: 100%; min-width: 90px; padding: 4px 6px; font-size: 0.85rem; border: 1px solid #1a3c5e; border-radius: 4px; font-family: inherit; }
 .form-row.wide { flex-wrap: wrap; }
 .form-row.wide .form-group { min-width: 220px; }
 .pagination { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 0 24px 20px; font-size: 0.85rem; color: #666; }
