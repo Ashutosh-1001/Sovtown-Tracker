@@ -34,6 +34,7 @@ async function connect() {
   db = client.db(DB_NAME);
   await db.collection('municipalities').createIndex({ sovtown_id: 1 }, { unique: true });
   await db.collection('volunteers').createIndex({ name: 1 }, { unique: true });
+  await db.collection('researchers').createIndex({ name: 1 }, { unique: true });
   console.log(`Connected to MongoDB database: ${DB_NAME}`);
   return db;
 }
@@ -70,6 +71,15 @@ function normalizeVolunteer(doc) {
   };
 }
 
+function normalizeResearcher(doc) {
+  if (!doc) return null;
+  return {
+    id: doc._id.toString(),
+    name: doc.name,
+    date_added: doc.dateAdded ? doc.dateAdded.toISOString() : null,
+  };
+}
+
 function bodyToMongoUpdate(body) {
   const update = {};
   const fieldMap = {
@@ -88,5 +98,6 @@ module.exports = {
   ObjectId,
   normalizeMunicipality,
   normalizeVolunteer,
+  normalizeResearcher,
   bodyToMongoUpdate,
 };

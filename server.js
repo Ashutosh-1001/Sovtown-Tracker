@@ -7,6 +7,7 @@ const {
   ObjectId,
   normalizeMunicipality,
   normalizeVolunteer,
+  normalizeResearcher,
   bodyToMongoUpdate,
 } = require('./db');
 
@@ -358,14 +359,36 @@ app.get('/api/stats', asyncHandler(async (req, res) => {
   });
 }));
 
+// --- Researchers (manageable directory) ---
+
+app.get('/api/researchers', asyncHandler(async (req, res) => {
+  const rows = await getDb().collection('researchers').find().sort({ name: 1 }).toArray();
+  res.json(rows.map(normalizeResearcher));
+}));
+
+app.post('/api/researchers', asyncHandler(async (req, res) => {
+  const name = (req.body?.name || '').trim();
+  if (!name) return res.status(400).json({ error: 'Name is required' });
+
+  const researchers = getDb().collection('researchers');
+  try {
+    const result = await researchers.insertOne({ name, dateAdded: new Date() });
+    const row = await researchers.findOne({ _id: result.insertedId });
+    res.status(201).json(normalizeResearcher(row));
+  } catch (err) {
+    if (err.code === 11000) return res.status(409).json({ error: 'Researcher already exists' });
+    throw err;
+  }
+}));
+
+/** @deprecated Prefer GET /api/researchers — kept for compatibility; lists researcher names. */
+app.get('/api/researcher-names', asyncHandler(async (req, res) => {
+  const rows = await getDb().collection('researchers').find({}, { projection: { name: 1 } }).sort({ name: 1 }).toArray();
+  res.json(rows.map((r) => r.name));
+}));
+
 // --- Volunteers ---
 
-app.get('/api/researcher-names', asyncHandler(async (req, res) => {
-  const names = await getDb().collection('municipalities').distinct('assignedResearcher', {
-    assignedResearcher: { $nin: [null, ''] },
-  });
-  res.json(names.sort((a, b) => String(a).localeCompare(String(b))));
-}));
 
 app.get('/api/volunteers', asyncHandler(async (req, res) => {
   const rows = await getDb().collection('volunteers').find().sort({ name: 1 }).toArray();

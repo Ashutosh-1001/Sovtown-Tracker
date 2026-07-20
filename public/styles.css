@@ -6,7 +6,11 @@ body { font-family: system-ui, -apple-system, sans-serif; background: #f0f4f8; c
 .controls { display: flex; gap: 10px; padding: 16px 24px; background: white; border-bottom: 1px solid #e0e0e0; flex-wrap: wrap; align-items: center; }
 .controls input, .controls select { padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.9rem; }
 .controls input { flex: 1; min-width: 200px; }
-.btn-add { margin-left: auto; background: #2e7d32; color: white; border: none; padding: 9px 18px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 600; }
+.add-researcher { display: flex; gap: 8px; align-items: center; margin-left: auto; }
+.add-researcher input { flex: 0 1 180px; min-width: 140px; }
+.btn-add-researcher { background: #1a3c5e; color: white; border: none; padding: 9px 14px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 600; white-space: nowrap; }
+.btn-add-researcher:hover { background: #0f2540; }
+.btn-add { background: #2e7d32; color: white; border: none; padding: 9px 18px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 600; }
 .btn-add:hover { background: #1b5e20; }
 .table-wrap {
   padding: 20px 24px;

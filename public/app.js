@@ -5,7 +5,7 @@
   let currentPage = 1;
   let totalRows = 0;
   let editingId = null;
-  let volunteers = [];
+  let researchers = [];
   let searchTimer = null;
   let lastRows = [];
   let activeInlineCell = null;
@@ -125,20 +125,11 @@
     return params.toString();
   }
 
-  async function loadResearcherNames() {
-    const res = await fetch('/api/researcher-names');
+  async function loadResearchers() {
+    const res = await fetch('/api/researchers');
     if (!res.ok) throw new Error(await res.text());
-    return res.json();
-  }
-
-  async function loadVolunteers() {
-    const [volRes, names] = await Promise.all([
-      fetch('/api/volunteers'),
-      loadResearcherNames(),
-    ]);
-    if (!volRes.ok) throw new Error(await volRes.text());
-    volunteers = await volRes.json();
-    populateResearcherSelects(names);
+    researchers = await res.json();
+    populateResearcherSelects(researchers.map((r) => r.name));
   }
 
   function populateResearcherSelects(researcherNames) {
@@ -158,13 +149,34 @@
     if (filterVal) filterSel.value = filterVal;
 
     suggestions.innerHTML = '';
-    const suggestionSet = new Set(researcherNames);
-    volunteers.filter((v) => v.active).forEach((v) => suggestionSet.add(v.name));
-    [...suggestionSet].sort((a, b) => a.localeCompare(b)).forEach((name) => {
+    [...researcherNames].sort((a, b) => a.localeCompare(b)).forEach((name) => {
       const sOpt = document.createElement('option');
       sOpt.value = name;
       suggestions.appendChild(sOpt);
     });
+  }
+
+  async function addResearcher() {
+    const input = document.getElementById('newResearcherName');
+    const name = input.value.trim();
+    if (!name) {
+      showError('Enter a researcher name');
+      return;
+    }
+    try {
+      const res = await fetch('/api/researchers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || await res.text());
+      input.value = '';
+      await loadResearchers();
+      showSuccess('Researcher added: ' + body.name);
+    } catch (e) {
+      showError('Add researcher failed: ' + e.message);
+    }
   }
 
   async function loadTable() {
@@ -469,6 +481,15 @@
   }
 
   document.getElementById('btnAdd').addEventListener('click', () => openModal(null));
+  document.getElementById('btnAddResearcher').addEventListener('click', () => {
+    addResearcher().catch((e) => showError(e.message));
+  });
+  document.getElementById('newResearcherName').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addResearcher().catch((err) => showError(err.message));
+    }
+  });
   document.getElementById('btnCancel').addEventListener('click', closeModal);
   document.getElementById('btnSave').addEventListener('click', saveContact);
   document.getElementById('search').addEventListener('input', onFilterChange);
@@ -508,7 +529,7 @@
     }
   });
 
-  loadVolunteers()
+  loadResearchers()
     .then(refresh)
     .catch((e) => showError('Failed to load: ' + e.message));
 })();
