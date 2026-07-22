@@ -1,6 +1,7 @@
 require('dotenv').config();
 const path = require('path');
 const express = require('express');
+const ExcelJS = require('exceljs');
 const {
   connect,
   getDb,
@@ -162,15 +163,6 @@ function withUnassignedOnly(filter = {}) {
   const hasKeys = Object.keys(filter).length > 0;
   if (!hasKeys) return unassignedClause();
   return { $and: [filter, unassignedClause()] };
-}
-
-function escapeCsv(val) {
-  if (val == null) return '';
-  const s = String(val);
-  if (s.includes(',') || s.includes('"') || s.includes('\n')) {
-    return `"${s.replace(/"/g, '""')}"`;
-  }
-  return s;
 }
 
 async function generateSovtownId(municipalities) {
@@ -571,36 +563,78 @@ app.post('/api/bulk-assign-researchers', asyncHandler(async (req, res) => {
   });
 }));
 
-// --- Export ---
+// --- Export (full municipalities collection as .xlsx) ---
+
+const EXPORT_COLUMNS = [
+  { header: 'SOVTOWN ID', key: 'sovtown_id' },
+  { header: 'Municipality', key: 'municipality' },
+  { header: 'Legal Designation', key: 'legal_designation' },
+  { header: 'Official Census Name', key: 'official_census_name' },
+  { header: 'State', key: 'state' },
+  { header: 'State Abbr.', key: 'state_abbr' },
+  { header: 'State FIPS', key: 'state_fips' },
+  { header: 'Place FIPS', key: 'place_fips' },
+  { header: 'Census GEOID', key: 'census_geoid' },
+  { header: '2025 Population', key: 'population_2025' },
+  { header: 'Under 10,000?', key: 'under_10000' },
+  { header: 'Population Band', key: 'population_band' },
+  { header: 'Enrichment Status', key: 'enrichment_status' },
+  { header: 'Assigned Researcher', key: 'assigned_researcher' },
+  { header: 'Official Website', key: 'official_website' },
+  { header: 'Primary Contact', key: 'primary_contact' },
+  { header: 'Contact Email', key: 'contact_email' },
+  { header: 'Contact Phone', key: 'contact_phone' },
+  { header: 'Research Notes', key: 'research_notes' },
+  { header: 'Census Functional Status', key: 'census_functional_status' },
+  { header: 'Source URL', key: 'source_url' },
+  { header: 'Priority', key: 'priority' },
+  { header: 'Contact Method', key: 'contact_method' },
+  { header: 'Follow-up', key: 'follow_up_date' },
+  { header: 'Survey Sent', key: 'survey_sent' },
+  { header: 'Date Sent', key: 'date_sent' },
+  { header: 'Response Received', key: 'response_received' },
+];
 
 app.get('/api/export', asyncHandler(async (req, res) => {
   const municipalities = getDb().collection('municipalities');
-  const filter = buildMongoFilter(req.query);
-  const rows = await municipalities.find(filter).sort({ municipality: 1 }).toArray();
+  const docs = await municipalities.find({}).sort({ sovtown_id: 1 }).toArray();
 
-  const headers = [
-    'SOVTOWN ID', 'Municipality', 'State', 'State Abbr.', 'Population 2025',
-    'Population Band', 'Under 10,000?', 'Enrichment Status', 'Assigned Researcher',
-    'Primary Contact', 'Contact Email', 'Contact Phone', 'Official Website',
-    'Priority', 'Contact Method', 'Follow Up Date', 'Survey Sent', 'Date Sent',
-    'Response Received', 'Response Date', 'Responded', 'Note', 'Research Notes',
-  ];
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Project Sovereign Town';
+  workbook.created = new Date();
+  const sheet = workbook.addWorksheet('Municipalities');
 
-  const csvRows = [headers.join(',')];
-  for (const raw of rows) {
+  sheet.columns = EXPORT_COLUMNS.map((col) => ({
+    header: col.header,
+    key: col.key,
+    width: Math.min(28, Math.max(12, col.header.length + 2)),
+  }));
+
+  const headerRow = sheet.getRow(1);
+  headerRow.font = { bold: true };
+  headerRow.commit();
+
+  for (const raw of docs) {
     const r = normalizeMunicipality(raw);
-    csvRows.push([
-      r.sovtown_id, r.municipality, r.state, r.state_abbr, r.population_2025,
-      r.population_band, r.under_10000, r.enrichment_status, r.assigned_researcher,
-      r.primary_contact, r.contact_email, r.contact_phone, r.official_website,
-      r.priority, r.contact_method, r.follow_up_date, r.survey_sent, r.date_sent,
-      r.response_received, r.response_date, r.responded, r.note, r.research_notes,
-    ].map(escapeCsv).join(','));
+    const row = {};
+    for (const col of EXPORT_COLUMNS) {
+      const v = r[col.key];
+      row[col.key] = v == null ? '' : v;
+    }
+    sheet.addRow(row);
   }
 
-  res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', 'attachment; filename="sovereign-town-export.csv"');
-  res.send(csvRows.join('\n'));
+  const buffer = await workbook.xlsx.writeBuffer();
+
+  res.setHeader(
+    'Content-Type',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  );
+  res.setHeader(
+    'Content-Disposition',
+    'attachment; filename="sovereign-town-municipalities.xlsx"'
+  );
+  res.send(Buffer.from(buffer));
 }));
 
 // --- Filter options ---

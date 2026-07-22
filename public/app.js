@@ -480,7 +480,36 @@
     }, 300);
   }
 
+  async function downloadExcel() {
+    const btn = document.getElementById('btnExportExcel');
+    btn.disabled = true;
+    const prevLabel = btn.textContent;
+    btn.textContent = 'Preparing…';
+    try {
+      const res = await fetch('/api/export');
+      if (!res.ok) throw new Error(await res.text());
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'sovereign-town-municipalities.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showSuccess('Excel download started');
+    } catch (e) {
+      showError('Excel download failed: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = prevLabel;
+    }
+  }
+
   document.getElementById('btnAdd').addEventListener('click', () => openModal(null));
+  document.getElementById('btnExportExcel').addEventListener('click', () => {
+    downloadExcel().catch((e) => showError(e.message));
+  });
   document.getElementById('btnAddResearcher').addEventListener('click', () => {
     addResearcher().catch((e) => showError(e.message));
   });

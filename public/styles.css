@@ -10,6 +10,9 @@ body { font-family: system-ui, -apple-system, sans-serif; background: #f0f4f8; c
 .add-researcher input { flex: 0 1 180px; min-width: 140px; }
 .btn-add-researcher { background: #1a3c5e; color: white; border: none; padding: 9px 14px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 600; white-space: nowrap; }
 .btn-add-researcher:hover { background: #0f2540; }
+.btn-export { background: #1565c0; color: white; border: none; padding: 9px 16px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 600; white-space: nowrap; }
+.btn-export:hover { background: #0d47a1; }
+.btn-export:disabled { opacity: 0.6; cursor: wait; }
 .btn-add { background: #2e7d32; color: white; border: none; padding: 9px 18px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 600; }
 .btn-add:hover { background: #1b5e20; }
 .table-wrap {
