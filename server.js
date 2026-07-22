@@ -597,13 +597,28 @@ const EXPORT_COLUMNS = [
 
 app.get('/api/export', asyncHandler(async (req, res) => {
   const municipalities = getDb().collection('municipalities');
-  const docs = await municipalities.find({}).sort({ sovtown_id: 1 }).toArray();
 
-  const workbook = new ExcelJS.Workbook();
+  // Stream the workbook to the response. Building ~19.5k rows with ExcelJS's
+  // in-memory Workbook + writeBuffer() peaks around ~500MB RSS and can OOM
+  // (process killed → browser shows "Failed to fetch" / Excel download failed).
+  res.setHeader(
+    'Content-Type',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  );
+  res.setHeader(
+    'Content-Disposition',
+    'attachment; filename="sovereign-town-municipalities.xlsx"'
+  );
+
+  const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({
+    stream: res,
+    useStyles: true,
+    useSharedStrings: false,
+  });
   workbook.creator = 'Project Sovereign Town';
   workbook.created = new Date();
-  const sheet = workbook.addWorksheet('Municipalities');
 
+  const sheet = workbook.addWorksheet('Municipalities');
   sheet.columns = EXPORT_COLUMNS.map((col) => ({
     header: col.header,
     key: col.key,
@@ -614,27 +629,21 @@ app.get('/api/export', asyncHandler(async (req, res) => {
   headerRow.font = { bold: true };
   headerRow.commit();
 
-  for (const raw of docs) {
+  let count = 0;
+  const cursor = municipalities.find({}).sort({ sovtown_id: 1 });
+  for await (const raw of cursor) {
     const r = normalizeMunicipality(raw);
     const row = {};
     for (const col of EXPORT_COLUMNS) {
       const v = r[col.key];
       row[col.key] = v == null ? '' : v;
     }
-    sheet.addRow(row);
+    sheet.addRow(row).commit();
+    count += 1;
   }
 
-  const buffer = await workbook.xlsx.writeBuffer();
-
-  res.setHeader(
-    'Content-Type',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-  );
-  res.setHeader(
-    'Content-Disposition',
-    'attachment; filename="sovereign-town-municipalities.xlsx"'
-  );
-  res.send(Buffer.from(buffer));
+  console.log(`[export] wrote ${count} municipality rows to xlsx`);
+  await workbook.commit();
 }));
 
 // --- Filter options ---

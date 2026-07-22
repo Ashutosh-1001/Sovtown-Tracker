@@ -487,8 +487,25 @@
     btn.textContent = 'Preparing…';
     try {
       const res = await fetch('/api/export');
-      if (!res.ok) throw new Error(await res.text());
+      const contentType = res.headers.get('content-type') || '';
+      if (!res.ok) {
+        let detail = `HTTP ${res.status}`;
+        if (contentType.includes('application/json')) {
+          const body = await res.json().catch(() => ({}));
+          detail = body.error || JSON.stringify(body) || detail;
+        } else {
+          detail = (await res.text()).slice(0, 300) || detail;
+        }
+        throw new Error(detail);
+      }
+      if (!contentType.includes('spreadsheetml') && !contentType.includes('octet-stream')) {
+        const preview = (await res.text()).slice(0, 120).replace(/\s+/g, ' ');
+        throw new Error(`Expected an Excel file but got ${contentType || 'unknown type'}: ${preview}`);
+      }
       const blob = await res.blob();
+      if (!blob || blob.size < 100) {
+        throw new Error('Download was empty or truncated');
+      }
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -499,6 +516,7 @@
       URL.revokeObjectURL(url);
       showSuccess('Excel download started');
     } catch (e) {
+      console.error('Excel download error:', e);
       showError('Excel download failed: ' + e.message);
     } finally {
       btn.disabled = false;
